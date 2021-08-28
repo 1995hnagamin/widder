@@ -7,3 +7,4 @@ edition = "2018"
 
 [dependencies]
 bzip2 = "0.4.3"
+xml-rs = "0.8"
