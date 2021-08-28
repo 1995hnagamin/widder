@@ -1,14 +1,17 @@
 use bzip2::read::BzDecoder;
 use std::env;
-use std::process;
+use std::error::Error;
+use std::fs::File;
+use std::io::BufReader;
 
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
-    let config = parse_config(&args).unwrap_or_else(|err| {
-        println!("{}", err);
-        process::exit(1);
-    });
+    let config = parse_config(&args)?;
     println!("{}", config.filename);
+
+    let reader = BufReader::new(File::open(config.filename)?);
+    let mut reader = BzDecoder::new(reader);
+    Ok(())
 }
 
 struct Config {
