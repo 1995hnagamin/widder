@@ -3,6 +3,7 @@ use std::env;
 use std::error::Error;
 use std::fs::File;
 use std::io::BufReader;
+use xml::reader::{EventReader, XmlEvent};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
@@ -10,7 +11,29 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("{}", config.filename);
 
     let reader = BufReader::new(File::open(config.filename)?);
-    let mut reader = BzDecoder::new(reader);
+    let reader = BzDecoder::new(reader);
+    let parser = EventReader::new(reader);
+    let mut title_mode = false;
+    for ev in parser {
+        match ev? {
+            XmlEvent::StartElement { name, .. } => {
+                if name.local_name == "title" {
+                    title_mode = true
+                }
+            }
+            XmlEvent::EndElement { name, .. } => {
+                if name.local_name == "title" {
+                    title_mode = false
+                }
+            }
+            XmlEvent::Characters(text) => {
+                if title_mode {
+                    println!("{}", text)
+                }
+            }
+            _ => {}
+        }
+    }
     Ok(())
 }
 
