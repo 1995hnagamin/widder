@@ -47,7 +47,7 @@ fn lowercase_first_character(s: &str) -> String {
 fn detect_title(title: &str, text: &str) -> String {
     lazy_static! {
         static ref LC: Regex =
-            Regex::new(r"(\{\{小文字(\|[^\}\n]*)?\}\}|\{\{lowercase title\}\})").unwrap();
+            Regex::new(r"\{\{(小文字|lowercase|lowercase title)(\|[^\}\n]*)?\}\}").unwrap();
     }
     if LC.is_match(text) {
         lowercase_first_character(title)
