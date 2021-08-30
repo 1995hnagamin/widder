@@ -56,12 +56,15 @@ fn read_mediawiki_doc<R: Read>(reader: R) -> Result<(), Box<dyn Error>> {
     let parser = EventReader::new(reader);
 
     let mut state = ReaderState::Base;
+    let mut is_redirect = false;
     let mut cur_title = String::from("");
     for ev in parser {
         match ev? {
             XmlEvent::StartElement { name, .. } => match name.local_name.as_str() {
+                "page" => is_redirect = false,
                 "title" => state = ReaderState::Title,
                 "text" => state = ReaderState::Body,
+                "redirect" => is_redirect = true,
                 _ => {}
             },
             XmlEvent::EndElement { name, .. } => match name.local_name.as_str() {
@@ -71,6 +74,9 @@ fn read_mediawiki_doc<R: Read>(reader: R) -> Result<(), Box<dyn Error>> {
             XmlEvent::Characters(text) => match state {
                 ReaderState::Title => cur_title = text,
                 ReaderState::Body => {
+                    if is_redirect {
+                        continue;
+                    }
                     if contains_lowercase_template(&text) {
                         println!("{}", lowercase_first_character(&cur_title))
                     } else {
