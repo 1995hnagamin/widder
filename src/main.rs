@@ -36,19 +36,23 @@ enum ReaderState {
     Body,
 }
 
-fn contains_lowercase_template(text: &str) -> bool {
-    lazy_static! {
-        static ref LC: Regex =
-            Regex::new(r"(\{\{小文字(\|[^\}\n]*)?\}\}|\{\{lowercase title\}\})").unwrap();
-    }
-    LC.is_match(text)
-}
-
 fn lowercase_first_character(s: &str) -> String {
     let mut chars = s.chars();
     match chars.next() {
         None => String::new(),
         Some(c) => c.to_lowercase().collect::<String>() + chars.as_str(),
+    }
+}
+
+fn detect_title(title: &str, text: &str) -> String {
+    lazy_static! {
+        static ref LC: Regex =
+            Regex::new(r"(\{\{小文字(\|[^\}\n]*)?\}\}|\{\{lowercase title\}\})").unwrap();
+    }
+    if LC.is_match(text) {
+        lowercase_first_character(title)
+    } else {
+        title.to_string()
     }
 }
 
@@ -71,17 +75,13 @@ fn read_mediawiki_doc<R: Read>(reader: R) -> Result<(), Box<dyn Error>> {
                 "title" | "text" => state = ReaderState::Base,
                 _ => {}
             },
-            XmlEvent::Characters(text) => match state {
-                ReaderState::Title => cur_title = text,
+            XmlEvent::Characters(chars) => match state {
+                ReaderState::Title => cur_title = chars,
                 ReaderState::Body => {
                     if is_redirect {
                         continue;
                     }
-                    if contains_lowercase_template(&text) {
-                        println!("{}", lowercase_first_character(&cur_title))
-                    } else {
-                        println!("{}", cur_title)
-                    }
+                    println!("{}", detect_title(&cur_title, &chars))
                 }
                 _ => {}
             },
