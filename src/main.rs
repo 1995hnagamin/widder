@@ -1,6 +1,6 @@
 use bzip2::read::BzDecoder;
-use mediawiki_parser;
-use serde_yaml;
+use lazy_static::lazy_static;
+use regex::Regex;
 use std::env;
 use std::error::Error;
 use std::fs::File;
@@ -36,10 +36,27 @@ enum ReaderState {
     Body,
 }
 
+fn contains_lowercase_template(text: &str) -> bool {
+    lazy_static! {
+        static ref LC: Regex =
+            Regex::new(r"(\{\{小文字(\|[^\}\n]*)?\}\}|\{\{lowercase title\}\})").unwrap();
+    }
+    LC.is_match(text)
+}
+
+fn lowercase_first_character(s: &str) -> String {
+    let mut chars = s.chars();
+    match chars.next() {
+        None => String::new(),
+        Some(c) => c.to_lowercase().collect::<String>() + chars.as_str(),
+    }
+}
+
 fn read_mediawiki_doc<R: Read>(reader: R) -> Result<(), Box<dyn Error>> {
     let parser = EventReader::new(reader);
 
     let mut state = ReaderState::Base;
+    let mut cur_title = String::from("");
     for ev in parser {
         match ev? {
             XmlEvent::StartElement { name, .. } => match name.local_name.as_str() {
@@ -51,14 +68,17 @@ fn read_mediawiki_doc<R: Read>(reader: R) -> Result<(), Box<dyn Error>> {
                 "title" | "text" => state = ReaderState::Base,
                 _ => {}
             },
-            XmlEvent::Characters(text) => {
-                if state == ReaderState::Title {
-                    println!("{}", text)
-                } else if state == ReaderState::Body {
-                    let body = mediawiki_parser::parse(&text)?;
-                    println!("{}", &serde_yaml::to_string(&body)?)
+            XmlEvent::Characters(text) => match state {
+                ReaderState::Title => cur_title = text,
+                ReaderState::Body => {
+                    if contains_lowercase_template(&text) {
+                        println!("{}", lowercase_first_character(&cur_title))
+                    } else {
+                        println!("{}", cur_title)
+                    }
                 }
-            }
+                _ => {}
+            },
             _ => {}
         }
     }
