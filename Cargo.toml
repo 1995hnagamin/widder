@@ -7,6 +7,8 @@ edition = "2018"
 
 [dependencies]
 bzip2 = "0.4.3"
+lazy_static = "1.4.0"
 mediawiki_parser = "0.4.2"
+regex = "1"
 serde_yaml = "0.8.20"
 xml-rs = "0.8"
