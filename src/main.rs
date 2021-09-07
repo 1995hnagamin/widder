@@ -1,32 +1,39 @@
 use bzip2::read::BzDecoder;
+use clap::Clap;
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::env;
 use std::error::Error;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use xml::reader::{EventReader, XmlEvent};
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let args: Vec<String> = env::args().collect();
-    let config = parse_config(&args)?;
-    println!("{}", config.filename);
+    let opts: Opts = Opts::parse();
 
-    let reader = BufReader::new(File::open(config.filename)?);
-    read_mediawiki_doc(BzDecoder::new(reader))?;
-    Ok(())
-}
-
-struct Config {
-    filename: String,
-}
-
-fn parse_config(args: &[String]) -> Result<Config, &'static str> {
-    if args.len() < 2 {
-        return Err("not enough arguments");
+    match opts.subcmd {
+        SubCommand::Titles(t) => {
+            println!("{}", t.filename);
+            let reader = BufReader::new(File::open(t.filename)?);
+            read_mediawiki_doc(BzDecoder::new(reader))?;
+            Ok(())
+        }
     }
-    let filename = args[1].clone();
-    Ok(Config { filename })
+}
+
+#[derive(Clap)]
+struct Opts {
+    #[clap(subcommand)]
+    subcmd: SubCommand,
+}
+
+#[derive(Clap)]
+enum SubCommand {
+    Titles(Titles),
+}
+
+#[derive(Clap)]
+struct Titles {
+    filename: String,
 }
 
 #[derive(PartialEq)]
